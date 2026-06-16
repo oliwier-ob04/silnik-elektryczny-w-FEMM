@@ -166,7 +166,7 @@ mi_selectlabel((R4 + R5) * 0.5, 0)
 mi_setblockprop("Air", 1, 0.5, "", 0, 0, 0)
 mi_clearselected()
 
--- jarzmo wirnika - stal (obraca sie z magnesami)
+-- jarzmo wirnika - stal
 mi_addblocklabel((R6 + R7) * 0.5, 0)
 mi_selectlabel((R6 + R7) * 0.5, 0)
 mi_setblockprop("M-19 Steel", 1, 0.5, "", 0, 0, 0)
@@ -230,24 +230,24 @@ mi_selectcircle(0, 0, R5 - 0.5, 4)
 mi_setgroup(0)
 mi_clearselected()
 
--- widok
-mi_zoomnatural()
 
--- zapis modelu obok skryptu (nazwa wzgledna - bez podawania sciezki)
+mi_zoomnatural()
 mi_saveas("silnik_wariant5.FEM")
+
 
 -- zakres badania: kat polozenia wirnika
 angle_start = 0
 angle_stop  = 60
-angle_step  = 2     -- krok katowy (mniejszy = wiecej punktow)
+angle_step  = 2
 
 -- punkty odczytu indukcji w szczelinie
 R_probe = (R4 + R5) / 2
 n_probe = 180
 
--- plik wynikowy obok skryptu (nazwa wzgledna)
+
 fp = openfile("wyniki.csv", "w")
 write(fp, "kat_deg,moment_Nm,Bmax_szczelina_T,Bsr_szczelina_T\n")
+
 
 -- ustawienie wirnika na kat poczatkowy
 if angle_start ~= 0 then
@@ -295,6 +295,6 @@ while a < angle_stop + 0.0001 do
     a = a + angle_step
 end
 
--- zakonczenie i komunikat
+
 closefile(fp)
 messagebox("Gotowe. Pliki silnik_wariant5.FEM i wyniki.csv zapisano w tym folderze.")

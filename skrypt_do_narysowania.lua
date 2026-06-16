@@ -166,7 +166,7 @@ mi_selectlabel((R4 + R5) * 0.5, 0)
 mi_setblockprop("Air", 1, 0.5, "", 0, 0, 0)
 mi_clearselected()
 
--- jarzmo wirnika - stal (obraca sie z magnesami)
+-- jarzmo wirnika - stal
 mi_addblocklabel((R6 + R7) * 0.5, 0)
 mi_selectlabel((R6 + R7) * 0.5, 0)
 mi_setblockprop("M-19 Steel", 1, 0.5, "", 0, 0, 0)
@@ -230,12 +230,11 @@ mi_selectcircle(0, 0, R5 - 0.5, 4)
 mi_setgroup(0)
 mi_clearselected()
 
--- ustawienie wirnika pod zadanym katem
+-- ustawienie wirnika pod katem
 if rotor_angle ~= 0 then
     mi_selectgroup(ROTOR)
     mi_moverotate(0, 0, rotor_angle, 4)
     mi_clearselected()
 end
 
--- widok
 mi_zoomnatural()
