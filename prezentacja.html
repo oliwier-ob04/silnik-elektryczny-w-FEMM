@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<title>Silnik elektryczny w FEMM 4.2</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b1120;--bg2:#0f1a2e;--accent:#00c8ff;--accent2:#00ff9f;
+  --text:#e2eaf5;--dim:#7a90b0;--card:rgba(255,255,255,0.05);
+  --border:rgba(0,200,255,0.15);
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);height:100vh;overflow:hidden}
+#deck{width:100%;height:100%;position:relative}
+.slide{position:absolute;inset:0;padding:48px 80px 80px;display:none;flex-direction:column;gap:20px}
+.slide.active{display:flex}
+.snum{position:absolute;top:18px;right:30px;font-size:11px;color:var(--dim);letter-spacing:1px}
+
+/* ── Title ── */
+#s1{justify-content:center;align-items:center;text-align:center;
+    background:radial-gradient(ellipse 80% 60% at 50% 50%,#0d2a4a 0%,var(--bg) 70%)}
+.badge{border:1px solid var(--border);background:rgba(0,200,255,0.07);color:var(--accent);
+       padding:6px 18px;border-radius:20px;font-size:12px;letter-spacing:2px;
+       text-transform:uppercase;margin-bottom:28px}
+#s1 h1{font-size:40px;font-weight:700;line-height:1.2;
+        background:linear-gradient(135deg,#fff 40%,var(--accent));
+        -webkit-background-clip:text;-webkit-text-fill-color:transparent;margin-bottom:14px}
+.subtitle{font-size:19px;color:var(--dim);margin-bottom:36px}
+.author{font-size:13px;color:var(--dim);border-top:1px solid var(--border);padding-top:18px;letter-spacing:1px}
+
+/* ── Headers ── */
+.hdr{border-bottom:1px solid var(--border);padding-bottom:11px;flex-shrink:0}
+.hdr h2{font-size:26px;font-weight:600;color:var(--accent)}
+.hdr p{font-size:13px;color:var(--dim);margin-top:3px}
+
+/* ── Layouts ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:22px;flex:1;min-height:0}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;flex:1;min-height:0}
+
+/* ── Cards ── */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px}
+.card h3{font-size:15px;color:var(--accent);margin-bottom:10px;font-weight:600}
+
+/* ── Bullets ── */
+ul.b{list-style:none;display:flex;flex-direction:column;gap:11px}
+ul.b li{display:flex;align-items:flex-start;gap:11px;font-size:16px;line-height:1.5}
+ul.b li::before{content:'';flex-shrink:0;width:7px;height:7px;background:var(--accent);
+                border-radius:50%;margin-top:8px}
+ul.b li .s{display:block;font-size:12px;color:var(--dim);margin-top:2px}
+
+/* ── Table ── */
+table.t{width:100%;border-collapse:collapse;font-size:14px}
+table.t th{text-align:left;padding:9px 13px;color:var(--accent);border-bottom:1px solid var(--border);
+           font-size:12px;text-transform:uppercase;letter-spacing:1px}
+table.t td{padding:9px 13px;border-bottom:1px solid rgba(255,255,255,0.04)}
+table.t tr:hover td{background:rgba(255,255,255,0.03)}
+table.t td:last-child{text-align:right;color:var(--accent2);font-family:monospace}
+
+/* ── Code ── */
+.code{background:#050c18;border:1px solid var(--border);border-radius:8px;
+      padding:14px 18px;font-family:Consolas,monospace;font-size:12.5px;line-height:1.8}
+.kw{color:#ff79c6}.fn{color:#50fa7b}.cm{color:#6272a4}.num{color:#bd93f9}.str{color:#f1fa8c}
+
+/* ── Highlight ── */
+.hl{background:rgba(0,200,255,0.07);border-left:3px solid var(--accent);
+    padding:12px 16px;border-radius:0 8px 8px 0;font-size:15px}
+
+/* ── Stats ── */
+.stats{display:flex;gap:14px;flex-shrink:0}
+.stat{flex:1;background:var(--card);border:1px solid var(--border);border-radius:10px;
+      padding:14px;text-align:center}
+.stat .v{font-size:22px;font-weight:700;color:var(--accent);font-family:monospace}
+.stat .l{font-size:11px;color:var(--dim);margin-top:3px}
+
+/* ── Phase badges ── */
+.ph{display:inline-block;border-radius:5px;padding:2px 8px;font-weight:700;font-size:13px}
+.pa{background:rgba(255,80,80,.2);color:#ff6060;border:1px solid rgba(255,80,80,.3)}
+.pb{background:rgba(80,180,255,.2);color:#50b4ff;border:1px solid rgba(80,180,255,.3)}
+.pc{background:rgba(80,255,150,.2);color:#50ff96;border:1px solid rgba(80,255,150,.3)}
+
+/* ── Chart ── */
+.ch{flex:1;position:relative;min-height:0}
+.ch canvas{max-height:100%}
+
+/* ── Nav ── */
+#nav{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);
+     display:flex;align-items:center;gap:14px;
+     background:rgba(15,26,46,0.92);border:1px solid var(--border);
+     border-radius:40px;padding:7px 18px;backdrop-filter:blur(10px)}
+#nav button{background:none;border:none;color:var(--text);cursor:pointer;
+            font-size:17px;width:30px;height:30px;display:flex;align-items:center;
+            justify-content:center;border-radius:50%;transition:background .2s}
+#nav button:hover{background:rgba(0,200,255,.1);color:var(--accent)}
+#ctr{font-size:12px;color:var(--dim);min-width:46px;text-align:center}
+#bar{position:fixed;top:0;left:0;height:2px;background:var(--accent);transition:width .3s}
+</style>
+</head>
+<body>
+<div id="bar"></div>
+<div id="deck">
+
+<!-- ══ SLIDE 1 ══ -->
+<div class="slide active" id="s1">
+  <span class="snum">01 / 11</span>
+  <div class="badge">FEMM 4.2 &nbsp;·&nbsp; Lua &nbsp;·&nbsp; MES</div>
+  <h1>Modelowanie silnika elektrycznego<br>w FEMM&nbsp;4.2</h1>
+  <div class="subtitle">z wykorzystaniem języka programowania Lua</div>
+  <div class="author">Autor: oliwier-ob04 &nbsp;|&nbsp; 2026</div>
+</div>
+
+<!-- ══ SLIDE 2 ══ -->
+<div class="slide" id="s2">
+  <span class="snum">02 / 11</span>
+  <div class="hdr"><h2>Cel projektu</h2><p>Zakres i motywacja pracy</p></div>
+  <ul class="b">
+    <li><div>Symulacja 2D silnika PMSM metodą elementów skończonych (MES)
+      <span class="s">Modelowanie rozkładu pola magnetycznego w przekroju poprzecznym maszyny</span></div></li>
+    <li><div>Automatyzacja budowy geometrii i obliczeń przy użyciu skryptów Lua
+      <span class="s">Eliminacja ręcznego rysowania — pełna parametryzacja modelu w kodzie</span></div></li>
+    <li><div>Analiza indukcji magnetycznej B w szczelinie powietrznej
+      <span class="s">B<sub>max</sub> i B<sub>śr</sub> w funkcji kąta położenia wirnika θ</span></div></li>
+    <li><div>Wyznaczenie charakterystyki momentu elektromagnetycznego M(θ)
+      <span class="s">Moment [Nm] w 31 pozycjach wirnika od 0° do 60°, co 2°</span></div></li>
+  </ul>
+</div>
+
+<!-- ══ SLIDE 3 ══ -->
+<div class="slide" id="s3">
+  <span class="snum">03 / 11</span>
+  <div class="hdr"><h2>Użyte narzędzia</h2></div>
+  <div class="g3">
+    <div class="card">
+      <h3>FEMM 4.2</h3>
+      <ul class="b" style="font-size:14px">
+        <li>Darmowe środowisko MES 2D</li>
+        <li>Analiza magnetostatyczna i harmoniczna</li>
+        <li>Solver elementów skończonych</li>
+        <li>Wizualizacja map pola i indukcji</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Lua</h3>
+      <ul class="b" style="font-size:14px">
+        <li>Wbudowany język skryptowy FEMM</li>
+        <li>Automatyczne tworzenie geometrii</li>
+        <li>Przypisywanie materiałów i warunków</li>
+        <li>Eksport wyników do pliku CSV</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Repozytorium GitHub</h3>
+      <ul class="b" style="font-size:14px">
+        <li>2 skrypty Lua (rys. / rys.+obliczenia)</li>
+        <li>Plik CSV z 31 wierszami wyników</li>
+        <li>Obraz rozkładu indukcji (PNG)</li>
+        <li>Sprawozdanie techniczne (DOCX)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 4 ══ -->
+<div class="slide" id="s4">
+  <span class="snum">04 / 11</span>
+  <div class="hdr"><h2>Geometria silnika</h2><p>Przekrój poprzeczny – parametry konstrukcyjne</p></div>
+  <div class="g2">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <table class="t">
+        <tr><th>Parametr</th><th>Wartość</th></tr>
+        <tr><td>Liczba żłobków stojana N<sub>s</sub></td><td>12</td></tr>
+        <tr><td>Liczba magnesów wirnika N<sub>r</sub></td><td>14</td></tr>
+        <tr><td>Liczba faz</td><td>3 (A, B, C)</td></tr>
+        <tr><td>Liczba warstw (promieni R1–R8)</td><td>8</td></tr>
+        <tr><td>Zakres promieni</td><td>20 – 78 mm</td></tr>
+        <tr><td>Zwojów na cewkę</td><td>100</td></tr>
+        <tr><td>Prąd fazowy</td><td>7 A</td></tr>
+        <tr><td>Warunek brzegowy</td><td>A = 0 (Dirichleta)</td></tr>
+      </table>
+      <div class="hl">Silnik ułamkowy 12/14 → zredukowana tętność momentu zaczepowego</div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;">
+      <svg id="msvg" viewBox="0 0 240 240" width="270" height="270"></svg>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 5 ══ -->
+<div class="slide" id="s5">
+  <span class="snum">05 / 11</span>
+  <div class="hdr"><h2>Materiały i właściwości</h2></div>
+  <div class="g2" style="align-items:start;">
+    <table class="t">
+      <tr><th>Materiał</th><th>Zastosowanie w modelu</th></tr>
+      <tr><td>Powietrze (Air)</td><td>Szczelina powietrzna, obszar zewnętrzny</td></tr>
+      <tr><td>Stal M-19</td><td>Rdzeń stojana i jarzmo wirnika</td></tr>
+      <tr><td>Magnesy N40 (NdFeB 40 MGOe)</td><td>Magnesy trwałe wirnika (14 szt.)</td></tr>
+      <tr><td>Miedź 20 AWG</td><td>Uzwojenia fazowe w żłobkach</td></tr>
+    </table>
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <div class="card">
+        <h3>Magnesy NdFeB N40</h3>
+        <p style="font-size:13px;color:var(--dim)">Neodymowo-żelazowo-borowe magnesy trwałe o energii produktu 40 MGOe (~318 kJ/m³). Rozmieszczone naprzemiennie bieguny N/S na wirniku, modelowane jako źródła pola w MES.</p>
+      </div>
+      <div class="card">
+        <h3>Stal M-19</h3>
+        <p style="font-size:13px;color:var(--dim)">Blacha elektrotechniczna o niskich stratach w żelazie (ok. 1.5 W/kg przy 1.5 T, 50 Hz). Krzywoliniowa charakterystyka B-H wbudowana w bazę materiałów FEMM.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 6 ══ -->
+<div class="slide" id="s6">
+  <span class="snum">06 / 11</span>
+  <div class="hdr"><h2>Uzwojenia trójfazowe</h2><p>Konfiguracja elektryczna silnika</p></div>
+  <div class="g2">
+    <ul class="b">
+      <li><div>Trzy obwody: <span class="ph pa">A</span> <span class="ph pb">B</span> <span class="ph pc">C</span>
+        <span class="s">Każdy z prądem 7 A i 100 zwojami na cewkę; kierunki +/−</span></div></li>
+      <li><div>24 pozycje uzwojeń (2 warstwy w 12 żłobkach)
+        <span class="s">Naprzemienne kierunki prądu wewnątrz każdej fazy</span></div></li>
+      <li><div>Całkowita liczba zwojów efektywnych: <strong>2400</strong>
+        <span class="s">100 zwojów × 24 pozycji</span></div></li>
+      <li><div>Silnik PMSM – synchroniczny z magnesami trwałymi
+        <span class="s">Moment = oddziaływanie pola uzwojeń z polem magnesów</span></div></li>
+    </ul>
+    <div class="card" style="display:flex;flex-direction:column;gap:14px;">
+      <h3>Schemat rozkładu faz (12 żłobków)</h3>
+      <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:6px;font-size:12px;text-align:center;">
+        <span class="ph pa">A+</span><span class="ph pb">B−</span><span class="ph pc">C+</span>
+        <span class="ph pa">A−</span><span class="ph pb">B+</span><span class="ph pc">C−</span>
+        <span class="ph pa">A+</span><span class="ph pb">B−</span><span class="ph pc">C+</span>
+        <span class="ph pa">A−</span><span class="ph pb">B+</span><span class="ph pc">C−</span>
+      </div>
+      <div class="hl" style="margin-top:auto;font-size:14px;">
+        Stosunek N<sub>s</sub>/N<sub>r</sub> = 12/14 = 6/7<br>
+        → skrócony skok uzwojenia, kompaktowa budowa
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 7 ══ -->
+<div class="slide" id="s7">
+  <span class="snum">07 / 11</span>
+  <div class="hdr"><h2>Automatyzacja w języku Lua</h2><p>Dwa skrypty do pracy z FEMM 4.2</p></div>
+  <div class="g2">
+    <div class="card">
+      <h3>skrypt_do_narysowania.lua</h3>
+      <ul class="b" style="font-size:13px;gap:7px;margin-bottom:14px;">
+        <li>Tworzy geometrię: okręgi, linie promieniowe</li>
+        <li>Przypisuje materiały do obszarów</li>
+        <li>Definiuje uzwojenia i obwody elektryczne</li>
+        <li>Nie uruchamia solvera — wyłącznie wizualizacja</li>
+      </ul>
+      <div class="code">
+<span class="cm">-- definicja materiałów</span>
+<span class="fn">mi_addmaterial</span>(<span class="str">"N40"</span>, ...)
+<span class="fn">mi_addcircprop</span>(<span class="str">"FazaA"</span>, <span class="num">7</span>, <span class="num">1</span>)
+<span class="cm">-- rysowanie geometrii</span>
+<span class="fn">mi_addnode</span>(x, y)
+<span class="fn">mi_addarc</span>(x1,y1, x2,y2, <span class="num">30</span>, <span class="num">1</span>)</div>
+    </div>
+    <div class="card">
+      <h3>skrypt_rysunek_i_obliczenia.lua</h3>
+      <ul class="b" style="font-size:13px;gap:7px;margin-bottom:14px;">
+        <li>Buduje pełną geometrię (jak powyżej)</li>
+        <li>Uruchamia solver MES dla każdej pozycji</li>
+        <li>Obraca grupę wirnika o kolejne 2°</li>
+        <li>Zbiera M, B<sub>max</sub>, B<sub>śr</sub> → eksport CSV</li>
+      </ul>
+      <div class="code">
+<span class="kw">for</span> kat = <span class="num">0</span>, <span class="num">60</span>, <span class="num">2</span> <span class="kw">do</span>
+  <span class="fn">mi_analyze</span>(); <span class="fn">mi_loadsolution</span>()
+  M   = <span class="fn">mo_gapintegral</span>(<span class="num">0</span>, <span class="num">4</span>)
+  Bmax= <span class="fn">mo_gapintegral</span>(<span class="num">0</span>, <span class="num">2</span>)
+  <span class="fn">write</span>(f, kat,<span class="str">","</span>, M, <span class="str">","</span>, Bmax, <span class="str">"\n"</span>)
+  <span class="fn">mi_selectgroup</span>(<span class="num">1</span>); <span class="fn">mi_moverotate</span>(<span class="num">0</span>,<span class="num">0</span>,<span class="num">2</span>)
+<span class="kw">end</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 8 ══ -->
+<div class="slide" id="s8">
+  <span class="snum">08 / 11</span>
+  <div class="hdr"><h2>Analiza parametryczna</h2><p>Przeszukiwanie przestrzeni kąta wirnika θ</p></div>
+  <div class="stats">
+    <div class="stat"><div class="v">31</div><div class="l">pozycji wirnika</div></div>
+    <div class="stat"><div class="v">0° – 60°</div><div class="l">zakres kąta</div></div>
+    <div class="stat"><div class="v">2°</div><div class="l">krok obrotu</div></div>
+    <div class="stat"><div class="v">3</div><div class="l">mierzone wielkości</div></div>
+  </div>
+  <div class="g2" style="margin-top:4px;">
+    <div style="display:flex;flex-direction:column;gap:12px;">
+      <div class="hl">
+        Jeden cykl elektryczny = 360° / 14 biegunów ≈ <strong>25,7°</strong><br>
+        Zakres 0°–60° obejmuje ~2,3 pełnego cyklu elektrycznego
+      </div>
+      <ul class="b" style="font-size:14px;">
+        <li>W każdej pozycji: triangulacja siatki MES + rozwiązanie układu równań</li>
+        <li>Wyniki przez całkowanie po obwodzie szczeliny powietrznej</li>
+        <li>Eksport do pliku <code>wyniki.csv</code> (4 kolumny, 31 wierszy)</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Kolumny wynikowe CSV</h3>
+      <table class="t">
+        <tr><th>Kolumna</th><th>Opis</th></tr>
+        <tr><td><code>kat_deg</code></td><td>Kąt wirnika θ [°]</td></tr>
+        <tr><td><code>moment_Nm</code></td><td>Moment elektromagn. [Nm]</td></tr>
+        <tr><td><code>Bmax_szczelina_T</code></td><td>Maks. indukcja B<sub>max</sub> [T]</td></tr>
+        <tr><td><code>Bsr_szczelina_T</code></td><td>Śred. indukcja B<sub>śr</sub> [T]</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SLIDE 9 ══ -->
+<div class="slide" id="s9">
+  <span class="snum">09 / 11</span>
+  <div class="hdr"><h2>Wyniki – Moment elektromagnetyczny</h2><p>Charakterystyka M(θ) – silnik PMSM 12/14</p></div>
+  <div class="stats">
+    <div class="stat"><div class="v">+0.499 Nm</div><div class="l">Moment maksymalny</div></div>
+    <div class="stat"><div class="v">−0.587 Nm</div><div class="l">Moment minimalny</div></div>
+    <div class="stat"><div class="v">1.086 Nm</div><div class="l">Amplituda p-p</div></div>
+    <div class="stat"><div class="v">~25.7°</div><div class="l">Okres el. (14 bieg.)</div></div>
+  </div>
+  <div class="ch"><canvas id="cT"></canvas></div>
+</div>
+
+<!-- ══ SLIDE 10 ══ -->
+<div class="slide" id="s10">
+  <span class="snum">10 / 11</span>
+  <div class="hdr"><h2>Wyniki – Indukcja w szczelinie powietrznej</h2><p>B<sub>max</sub> i B<sub>śr</sub> w funkcji kąta wirnika θ</p></div>
+  <div class="stats">
+    <div class="stat"><div class="v">0.948 T</div><div class="l">B<sub>max</sub> — wartość maks.</div></div>
+    <div class="stat"><div class="v">0.872 T</div><div class="l">B<sub>max</sub> — wartość min.</div></div>
+    <div class="stat"><div class="v">~0.535 T</div><div class="l">B<sub>śr</sub> — prawie stała</div></div>
+    <div class="stat"><div class="v">8.7%</div><div class="l">Zmienność B<sub>max</sub></div></div>
+  </div>
+  <div class="ch"><canvas id="cB"></canvas></div>
+</div>
+
+<!-- ══ SLIDE 11 ══ -->
+<div class="slide" id="s11">
+  <span class="snum">11 / 11</span>
+  <div class="hdr"><h2>Wnioski</h2></div>
+  <div class="g2">
+    <ul class="b">
+      <li><div>Model MES poprawnie odwzorowuje charakterystykę silnika PMSM z magnesami NdFeB
+        <span class="s">Wyniki spójne z teorią maszyn synchronicznych z magnesami trwałymi</span></div></li>
+      <li><div>Moment M(θ) zmienia się w zakresie od −0.587 do +0.499 Nm
+        <span class="s">Widoczna tętność o okresie ~25.7° – wynika z konfiguracji 12/14</span></div></li>
+      <li><div>Indukcja B<sub>max</sub> waha się między 0.872 T a 0.948 T (zmienność 8.7%)
+        <span class="s">Odpowiada periodyczności biegunów N/S wirnika co ~25.7°</span></div></li>
+      <li><div>Indukcja średnia B<sub>śr</sub> ≈ 0.535 T – praktycznie stała
+        <span class="s">Dobra jednorodność wypadkowego pola w szczelinie powietrznej</span></div></li>
+      <li><div>Lua umożliwia pełną automatyzację analizy parametrycznej w FEMM
+        <span class="s">Łatwa zmiana geometrii, materiałów, prądu i ponowne obliczenia</span></div></li>
+    </ul>
+    <div class="card" style="display:flex;flex-direction:column;justify-content:space-between;">
+      <div>
+        <h3>Możliwe rozszerzenia</h3>
+        <ul class="b" style="font-size:13px;gap:7px;margin-top:8px;">
+          <li>Analiza strat w żelazie i uzwojeniach</li>
+          <li>Optymalizacja kształtu i rozmieszczenia magnesów</li>
+          <li>Symulacja przy różnych wartościach prądu fazowego</li>
+          <li>Model 3D (np. Elmer FEM / COMSOL)</li>
+          <li>Sprzężona analiza termiczna</li>
+        </ul>
+      </div>
+      <div class="hl" style="margin-top:16px;font-size:13px;">
+        Projekt: <code>oliwier-ob04/silnik-elektryczny-w-FEMM</code><br>
+        Pliki: 2 skrypty Lua · CSV · PNG · DOCX
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /#deck -->
+
+<div id="nav">
+  <button onclick="go(-1)">&#8592;</button>
+  <span id="ctr">1 / 11</span>
+  <button onclick="go(1)">&#8594;</button>
+</div>
+
+<script>
+// ── Data ──────────────────────────────────────────────────────────────────────
+const ANG = [0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,58,60];
+const TRQ = [-0.1621,-0.0518,-0.1457,-0.4209,-0.5751,-0.4879,-0.1695,0.1699,0.3730,0.3154,
+             0.1559,0.0323,0.1893,0.4011,0.4993,0.3606,0.0572,-0.1665,-0.1606,0.0554,
+             0.2674,0.2489,-0.0079,-0.3141,-0.4446,-0.3094,-0.1221,-0.0714,-0.2100,-0.4591,-0.5870];
+const BMX = [0.9471,0.9415,0.9332,0.9123,0.8719,0.8748,0.8771,0.8762,0.8716,0.8933,
+             0.9277,0.9363,0.9459,0.9478,0.9436,0.9303,0.9037,0.9141,0.9168,0.9227,
+             0.9202,0.9112,0.9073,0.9156,0.9319,0.9417,0.9439,0.9310,0.9395,0.9071,0.8749];
+const BSR = [0.5350,0.5347,0.5346,0.5346,0.5339,0.5332,0.5326,0.5326,0.5337,0.5336,
+             0.5335,0.5343,0.5340,0.5357,0.5360,0.5364,0.5362,0.5361,0.5357,0.5360,
+             0.5364,0.5369,0.5365,0.5363,0.5356,0.5355,0.5353,0.5348,0.5350,0.5341,0.5337];
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+const slides = document.querySelectorAll('.slide');
+const N = slides.length;
+let cur = 0, tInit = false, bInit = false;
+
+function go(d) {
+  slides[cur].classList.remove('active');
+  cur = (cur + d + N) % N;
+  slides[cur].classList.add('active');
+  document.getElementById('ctr').textContent = `${cur+1} / ${N}`;
+  document.getElementById('bar').style.width = `${(cur+1)/N*100}%`;
+  if (cur === 8 && !tInit) { initTorque(); tInit = true; }
+  if (cur === 9 && !bInit) { initFlux();  bInit = true; }
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key==='ArrowRight'||e.key==='ArrowDown') go(1);
+  if (e.key==='ArrowLeft' ||e.key==='ArrowUp')   go(-1);
+});
+
+// ── Motor SVG ────────────────────────────────────────────────────────────────
+(function() {
+  const svg = document.getElementById('msvg');
+  const cx = 120, cy = 120;
+  const R = a => a * Math.PI / 180;
+
+  function el(tag, a) {
+    const e = document.createElementNS('http://www.w3.org/2000/svg', tag);
+    for (const [k,v] of Object.entries(a)) e.setAttribute(k,v);
+    svg.appendChild(e); return e;
+  }
+  function circ(r, fill, stroke, sw=1) {
+    const a = {cx, cy, r, fill};
+    if (stroke) { a.stroke=stroke; a['stroke-width']=sw; }
+    el('circle', a);
+  }
+  function sect(r1, r2, a1d, a2d, fill, stroke) {
+    const a1=R(a1d), a2=R(a2d);
+    const large=(a2d-a1d)>180?1:0;
+    const d=[
+      `M ${cx+r2*Math.cos(a1)} ${cy+r2*Math.sin(a1)}`,
+      `A ${r2} ${r2} 0 ${large} 1 ${cx+r2*Math.cos(a2)} ${cy+r2*Math.sin(a2)}`,
+      `L ${cx+r1*Math.cos(a2)} ${cy+r1*Math.sin(a2)}`,
+      `A ${r1} ${r1} 0 ${large} 0 ${cx+r1*Math.cos(a1)} ${cy+r1*Math.sin(a1)} Z`
+    ].join(' ');
+    const a={d,fill};
+    if (stroke){a.stroke=stroke;a['stroke-width']=0.6;}
+    el('path',a);
+  }
+  function txt(x, y, s, fs=9, col='#7a90b0') {
+    const e=el('text',{x,y,fill:col,'font-size':fs,'text-anchor':'middle','font-family':'Segoe UI'});
+    e.textContent=s;
+  }
+
+  const BG='#0b1120', STEEL='#2a3a58', STEEL2='#374f70', AIR='#0d1928';
+  const PH=[['#3a1818','#ff6060'],['#182a3a','#50b4ff'],['#183a22','#50ff96']];
+
+  circ(114, BG, '#00c8ff', 0.4);    // boundary
+  circ(104, STEEL);                  // stator yoke
+  circ(64, BG);                      // clear bore
+
+  // Stator teeth & slots (12 slots at every 30°, offset so slots are between teeth)
+  for (let i=0; i<12; i++) {
+    const tc = i*30 - 90;            // tooth center
+    const sc = tc + 15;              // slot center (between teeth)
+    sect(64, 100, tc-7, tc+7, STEEL2, '#1a2a40');  // tooth
+    sect(65,  97, sc-7, sc+7, PH[i%3][0], PH[i%3][1]); // winding
+  }
+
+  circ(64, 'none', '#00c8ff', 0.5);  // stator bore ring
+
+  circ(62, AIR);                     // air gap
+
+  // Rotor magnets (14 poles, alternating N/S)
+  const MF=['#2a1a08','#081828'], MS=['#ff8844','#4488ff'];
+  for (let i=0; i<14; i++) {
+    const a1=i*360/14-90, a2=(i+1)*360/14-90;
+    sect(34, 60, a1+0.8, a2-0.8, MF[i%2], MS[i%2]);
+  }
+
+  circ(33, STEEL2, '#00c8ff', 0.4);  // rotor yoke
+  circ(17, BG, '#00c8ff', 0.4);      // shaft
+
+  // Labels
+  txt(cx, cy+4, 'wał');
+  txt(cx, 48, 'stojan', 8, '#7a90b0');
+  txt(cx, 122, 'wirnik', 8, '#a0b8d0');
+
+  // Magnet N/S labels
+  txt(cx, 70, 'N', 7, '#ff8844');
+  txt(cx, 92, 'S', 7, '#4488ff');
+})();
+
+// ── Chart helpers ────────────────────────────────────────────────────────────
+const gridColor = 'rgba(255,255,255,0.05)';
+const tickColor = '#7a90b0';
+const baseOpts = {
+  responsive:true, maintainAspectRatio:false,
+  plugins:{legend:{labels:{color:'#e2eaf5',font:{size:12}}}},
+  scales:{
+    x:{title:{display:true,text:'Kąt wirnika θ [°]',color:tickColor},
+       ticks:{color:tickColor},grid:{color:gridColor}},
+    y:{ticks:{color:tickColor},grid:{color:gridColor}}
+  }
+};
+
+function initTorque() {
+  new Chart(document.getElementById('cT').getContext('2d'), {
+    type:'line',
+    data:{labels:ANG,datasets:[{
+      label:'Moment M [Nm]',data:TRQ,
+      borderColor:'#00c8ff',backgroundColor:'rgba(0,200,255,0.07)',
+      borderWidth:2,pointRadius:3.5,pointBackgroundColor:'#00c8ff',
+      tension:0.35,fill:true
+    }]},
+    options:{...baseOpts,
+      plugins:{...baseOpts.plugins,
+        tooltip:{callbacks:{label:c=>` ${c.parsed.y.toFixed(4)} Nm`}},
+        annotation:{annotations:{zero:{type:'line',yMin:0,yMax:0,borderColor:'rgba(255,255,255,0.2)',borderWidth:1}}}
+      },
+      scales:{...baseOpts.scales,
+        y:{...baseOpts.scales.y,title:{display:true,text:'Moment [Nm]',color:tickColor}}
+      }
+    }
+  });
+}
+
+function initFlux() {
+  new Chart(document.getElementById('cB').getContext('2d'), {
+    type:'line',
+    data:{labels:ANG,datasets:[
+      {label:'Bmax [T]',data:BMX,borderColor:'#ff8844',
+       backgroundColor:'rgba(255,136,68,0.07)',borderWidth:2,
+       pointRadius:3,pointBackgroundColor:'#ff8844',tension:0.35,fill:false},
+      {label:'Bśr [T]', data:BSR,borderColor:'#00ff9f',
+       backgroundColor:'rgba(0,255,159,0.07)',borderWidth:2,
+       pointRadius:3,pointBackgroundColor:'#00ff9f',tension:0.35,fill:false}
+    ]},
+    options:{...baseOpts,
+      plugins:{...baseOpts.plugins,
+        tooltip:{callbacks:{label:c=>` ${c.parsed.y.toFixed(4)} T`}}
+      },
+      scales:{...baseOpts.scales,
+        y:{...baseOpts.scales.y,min:0.52,max:0.96,
+           title:{display:true,text:'Indukcja B [T]',color:tickColor}}
+      }
+    }
+  });
+}
+
+// Init progress bar
+document.getElementById('bar').style.width = `${1/N*100}%`;
+</script>
+</body>
+</html>
